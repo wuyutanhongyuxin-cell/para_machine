@@ -50,7 +50,13 @@ class TradingParams(BaseModel):
     max_position_size: float = Field(
         default=0.005, gt=0, description="Maximum position size in BTC"
     )
+    min_order_size: float = Field(
+        default=0.001, gt=0, description="Minimum order size in BTC"
+    )
     leverage: int = Field(default=10, ge=1, le=50, description="Trading leverage")
+    loop_interval_ms: int = Field(
+        default=1000, ge=100, le=10000, description="Main loop interval in milliseconds"
+    )
 
     # Entry filters
     max_spread_pct: float = Field(
@@ -73,6 +79,12 @@ class RiskParams(BaseModel):
     """Risk management parameters."""
 
     # Per-trade limits
+    risk_per_trade: float = Field(
+        default=0.02, gt=0, le=0.1, description="Risk per trade (2%)"
+    )
+    max_position_pct: float = Field(
+        default=0.10, gt=0, le=0.5, description="Max position as % of equity (10%)"
+    )
     max_loss_per_trade_pct: float = Field(
         default=0.03, gt=0, le=0.1, description="Max loss per trade (3%)"
     )
@@ -84,19 +96,40 @@ class RiskParams(BaseModel):
     )
 
     # Daily limits
+    daily_loss_limit: float = Field(
+        default=0.05, gt=0, le=0.2, description="Daily loss limit (5%)"
+    )
     max_daily_loss_pct: float = Field(
         default=0.05, gt=0, le=0.2, description="Max daily loss (5%)"
     )
     max_daily_trades: int = Field(default=50, ge=1, description="Max trades per day")
 
-    # Total limits
+    # Drawdown levels
+    drawdown_level1: float = Field(
+        default=0.03, gt=0, le=0.1, description="Level 1 drawdown threshold (3%)"
+    )
+    drawdown_level2: float = Field(
+        default=0.05, gt=0, le=0.15, description="Level 2 drawdown threshold (5%)"
+    )
+    drawdown_level3: float = Field(
+        default=0.10, gt=0, le=0.3, description="Level 3 drawdown threshold (10%)"
+    )
     max_total_drawdown_pct: float = Field(
         default=0.15, gt=0, le=0.5, description="Max total drawdown (15%)"
     )
 
-    # Consecutive losses
+    # Consecutive losses and cooldown
     max_consecutive_losses: int = Field(
         default=5, ge=1, le=20, description="Max consecutive losses before cooldown"
+    )
+    consecutive_loss_cooldown: int = Field(
+        default=3, ge=1, le=10, description="Consecutive losses to trigger cooldown"
+    )
+    large_loss_threshold: float = Field(
+        default=0.03, gt=0, le=0.1, description="Large loss threshold (3%)"
+    )
+    volatility_cooldown_threshold: float = Field(
+        default=0.95, gt=0, le=1.0, description="Volatility percentile to trigger cooldown"
     )
     cooldown_seconds: int = Field(
         default=300, ge=60, le=3600, description="Cooldown period after max losses (5 min)"
@@ -168,8 +201,14 @@ class LearningConfig(BaseModel):
     min_trials_per_strategy: int = Field(
         default=20, ge=5, le=100, description="Minimum trials per strategy"
     )
+    min_samples_per_strategy: int = Field(
+        default=20, ge=5, le=100, description="Minimum samples per strategy (alias)"
+    )
     thompson_prior_alpha: float = Field(default=1.0, gt=0)
     thompson_prior_beta: float = Field(default=1.0, gt=0)
+    thompson_decay: float = Field(
+        default=0.995, gt=0.9, le=1.0, description="Thompson decay factor for non-stationarity"
+    )
     exploitation_threshold: float = Field(
         default=0.15, ge=0, le=0.5, description="Gap required to enter exploitation mode"
     )
@@ -178,12 +217,18 @@ class LearningConfig(BaseModel):
     online_learning_enabled: bool = Field(default=True)
     online_learning_rate: float = Field(default=0.01, gt=0, le=0.5)
     online_l2_regularization: float = Field(default=0.01, ge=0, le=0.5)
-    online_min_samples: int = Field(default=20, ge=5, le=100)
+    online_min_samples: int = Field(default=50, ge=5, le=200)
     drift_sensitivity: float = Field(default=0.002, gt=0, le=0.1)
+    signal_threshold: float = Field(
+        default=0.45, ge=0, le=1.0, description="Signal probability threshold for trading"
+    )
 
 
 class SystemConfig(BaseModel):
     """System and operational configuration."""
+
+    # Data directory
+    data_dir: str = Field(default="./data", description="Data storage directory")
 
     # Intervals
     trade_check_interval: float = Field(

@@ -125,8 +125,8 @@ class TradingEngine:
 
         # API Client
         self.client = ParadexClient(
-            api_key=self.settings.api.api_key,
-            api_secret=self.settings.api.api_secret,
+            l2_private_key=self.settings.api.l2_private_key,
+            l2_address=self.settings.api.l2_address,
             environment=self.settings.api.environment,
             timeout=self.settings.api.timeout,
             max_retries=self.settings.api.max_retries,

@@ -14,12 +14,25 @@ Usage:
 __version__ = "1.0.0"
 __author__ = "Paradex Trader Team"
 
-from paradex_trader.config.settings import Settings, load_settings
-from paradex_trader.main import TradingEngine
+# Lazy imports to avoid circular dependencies
+def get_settings():
+    """Get Settings class."""
+    from paradex_trader.config.settings import Settings
+    return Settings
+
+def get_load_settings():
+    """Get load_settings function."""
+    from paradex_trader.config.settings import load_settings
+    return load_settings
+
+def get_trading_engine():
+    """Get TradingEngine class."""
+    from paradex_trader.main import TradingEngine
+    return TradingEngine
 
 __all__ = [
-    "TradingEngine",
-    "Settings",
-    "load_settings",
+    "get_trading_engine",
+    "get_settings",
+    "get_load_settings",
     "__version__",
 ]
