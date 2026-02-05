@@ -53,20 +53,30 @@ def create_strategy(name: str, config: dict = None) -> BaseStrategy:
     return strategies[name](config)
 
 
-def create_all_strategies(config: dict = None) -> list[BaseStrategy]:
+def create_all_strategies(config=None) -> dict:
     """
     Create instances of all available strategies.
 
     Args:
-        config: Configuration dictionary with strategy-specific configs.
+        config: Configuration object or dictionary.
 
     Returns:
-        List of strategy instances.
+        Dictionary of strategy name -> strategy instance.
     """
-    config = config or {}
+    # Handle Pydantic models by converting to dict or extracting strategy config
+    strategy_config = {}
+    if config is not None:
+        if hasattr(config, 'strategy'):
+            # It's a TradingConfig with a strategy attribute
+            strategy_config = config.strategy.model_dump() if hasattr(config.strategy, 'model_dump') else {}
+        elif hasattr(config, 'model_dump'):
+            # It's a Pydantic model
+            strategy_config = config.model_dump()
+        elif isinstance(config, dict):
+            strategy_config = config
 
-    return [
-        TrendFollowStrategy(config.get("trend_follow")),
-        MeanReversionStrategy(config.get("mean_reversion")),
-        MomentumStrategy(config.get("momentum")),
-    ]
+    return {
+        "trend_follow": TrendFollowStrategy(strategy_config.get("trend_follow")),
+        "mean_reversion": MeanReversionStrategy(strategy_config.get("mean_reversion")),
+        "momentum": MomentumStrategy(strategy_config.get("momentum")),
+    }
