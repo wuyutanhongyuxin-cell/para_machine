@@ -108,17 +108,33 @@ class ParadexClient:
             return
 
         try:
+            # Use ParadexSubkey for L2-only authentication
+            # Paradex class requires L1 credentials, ParadexSubkey works with L2 only
             from paradex_py import Paradex
+            try:
+                from paradex_py import ParadexSubkey
+                HAS_SUBKEY = True
+            except ImportError:
+                HAS_SUBKEY = False
             from paradex_py.environment import PROD, TESTNET
 
             env = PROD if self.environment == "prod" else TESTNET
 
-            # paradex-py derives address from private key
-            # Only pass l2_private_key, not l2_address
-            self._paradex = Paradex(
-                env=env,
-                l2_private_key=self.l2_private_key,
-            )
+            if HAS_SUBKEY and self.l2_private_key:
+                # Use ParadexSubkey for L2-only authentication
+                logger.info("Using ParadexSubkey for L2-only authentication")
+                self._paradex = ParadexSubkey(
+                    env=env,
+                    l2_private_key=self.l2_private_key,
+                    l2_address=self.l2_address,
+                )
+            else:
+                # Fallback to standard Paradex (requires L1 credentials)
+                logger.warning("ParadexSubkey not available, using standard Paradex")
+                self._paradex = Paradex(
+                    env=env,
+                    l1_private_key=self.l2_private_key,  # Try as L1 key
+                )
 
             # Create aiohttp session with connection pooling
             connector = aiohttp.TCPConnector(
