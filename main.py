@@ -24,7 +24,7 @@ from paradex_trader.core.database import Database
 from paradex_trader.core.exceptions import (
     ParadexTraderError,
     APIError,
-    RiskLimitError,
+    RiskLimitExceeded,
     InsufficientBalanceError,
 )
 from paradex_trader.core.models import Position, Trade, BBO
@@ -235,7 +235,7 @@ class TradingEngine:
                 except APIError as e:
                     logger.error(f"API error in trading loop: {e}")
                     await asyncio.sleep(5)  # Wait before retry
-                except RiskLimitError as e:
+                except RiskLimitExceeded as e:
                     logger.warning(f"Risk limit: {e}")
                 except Exception as e:
                     logger.exception(f"Unexpected error in trading loop: {e}")
