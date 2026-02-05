@@ -440,17 +440,21 @@ class StrategyManager:
     Handles strategy selection, signal aggregation, and performance tracking.
     """
 
-    def __init__(self, strategies: List[BaseStrategy]):
+    def __init__(self, strategies):
         """
         Initialize strategy manager.
 
         Args:
-            strategies: List of strategy instances.
+            strategies: List or dict of strategy instances.
         """
-        self.strategies: Dict[str, BaseStrategy] = {s.name: s for s in strategies}
+        # Handle both list and dict input
+        if isinstance(strategies, dict):
+            self.strategies: Dict[str, BaseStrategy] = strategies
+        else:
+            self.strategies: Dict[str, BaseStrategy] = {s.name: s for s in strategies}
         self._active_strategy: Optional[str] = None
 
-        logger.info(f"StrategyManager initialized with {len(strategies)} strategies")
+        logger.info(f"StrategyManager initialized with {len(self.strategies)} strategies")
 
     def get_strategy(self, name: str) -> Optional[BaseStrategy]:
         """Get a strategy by name."""
