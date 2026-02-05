@@ -15,7 +15,7 @@ setup(
     packages=["paradex_trader"],
     package_dir={"paradex_trader": "."},
     install_requires=[
-        "paradex-py>=1.0.0",
+        "paradex-py>=0.5.0",
         "pydantic>=2.0.0",
         "pydantic-settings>=2.0.0",
         "python-dotenv>=1.0.0",
