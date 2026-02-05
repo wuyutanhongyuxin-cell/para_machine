@@ -138,6 +138,9 @@ class TradingEngine:
                 max_retries=self.settings.api.max_retries,
             )
 
+            # Initialize client (connect and authenticate)
+            await self.client.initialize()
+
             # Verify connection
             account = await self.client.get_account_info()
             if account:
