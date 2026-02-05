@@ -193,20 +193,89 @@ class ParadexClient:
             AuthenticationError: If authentication fails.
         """
         try:
-            # Get JWT token using paradex-py SDK
-            # The SDK handles Starknet signature generation
+            if self._paradex is None:
+                raise AuthenticationError("Client not initialized")
+
+            # Check if using ParadexSubkey (L2-only auth)
+            try:
+                from paradex_py import ParadexSubkey
+                is_subkey = isinstance(self._paradex, ParadexSubkey)
+            except ImportError:
+                is_subkey = False
+
+            if is_subkey:
+                # ParadexSubkey requires onboarding() to get JWT
+                logger.info("Using ParadexSubkey - calling onboarding for JWT")
+                try:
+                    # Call onboarding to register/authenticate with Paradex
+                    result = self._paradex.onboarding()
+                    logger.info(f"Onboarding result type: {type(result)}")
+
+                    # Try to extract JWT from onboarding result
+                    jwt_token = None
+
+                    if isinstance(result, str):
+                        jwt_token = result
+                    elif isinstance(result, dict):
+                        jwt_token = result.get('jwt_token') or result.get('token') or result.get('jwt')
+
+                    # Check account attributes
+                    if not jwt_token:
+                        for attr in ['jwt_token', '_jwt_token', 'jwt', '_jwt', 'token']:
+                            if hasattr(self._paradex.account, attr):
+                                token = getattr(self._paradex.account, attr)
+                                if token:
+                                    jwt_token = token
+                                    logger.info(f"Found JWT in account.{attr}")
+                                    break
+
+                    # Check paradex object itself
+                    if not jwt_token:
+                        for attr in ['jwt_token', '_jwt_token', 'jwt', 'token']:
+                            if hasattr(self._paradex, attr):
+                                token = getattr(self._paradex, attr)
+                                if token:
+                                    jwt_token = token
+                                    logger.info(f"Found JWT in paradex.{attr}")
+                                    break
+
+                    # Check api_client headers
+                    if not jwt_token and hasattr(self._paradex, 'api_client'):
+                        api_client = self._paradex.api_client
+                        if hasattr(api_client, 'headers'):
+                            auth_header = api_client.headers.get('Authorization', '')
+                            if auth_header.startswith('Bearer '):
+                                jwt_token = auth_header[7:]
+                                logger.info("Found JWT in api_client headers")
+
+                    if jwt_token:
+                        self.jwt_token = jwt_token
+                        logger.info(f"JWT token obtained (length: {len(jwt_token)})")
+                    else:
+                        logger.warning("Could not extract JWT from SDK, will use SDK methods")
+                        self.jwt_token = None
+
+                    self.jwt_expires_at = int(time.time()) + 23 * 3600
+                    logger.info("Authentication successful (ParadexSubkey onboarding)")
+                    return True
+
+                except Exception as e:
+                    logger.error(f"ParadexSubkey onboarding failed: {e}")
+                    raise AuthenticationError(f"ParadexSubkey onboarding failed: {e}")
+
+            # For standard Paradex class, try to get JWT token
             auth_response = await self._make_auth_request()
 
             if auth_response and "jwt_token" in auth_response:
                 self.jwt_token = auth_response["jwt_token"]
-                # Token typically valid for 24 hours
                 self.jwt_expires_at = int(time.time()) + 23 * 3600
-
                 logger.info("Authentication successful (Interactive Token)")
                 return True
 
             raise AuthenticationError("Invalid authentication response")
 
+        except AuthenticationError:
+            raise
         except Exception as e:
             logger.error(f"Authentication failed: {e}")
             raise AuthenticationError(f"Authentication failed: {e}")
@@ -216,26 +285,28 @@ class ParadexClient:
         Make authentication request to Paradex.
 
         Uses paradex-py SDK for Starknet signature.
+        Only used for standard Paradex class (not ParadexSubkey).
         """
         if self._paradex is None:
             raise AuthenticationError("Client not initialized")
 
         try:
-            # Use SDK's built-in auth
-            # This generates proper Starknet signatures
-            response = self._paradex.account.get_jwt_token()
-
-            return {"jwt_token": response}
+            # For standard Paradex class, try to get JWT via account
+            if hasattr(self._paradex.account, 'get_jwt_token'):
+                response = self._paradex.account.get_jwt_token()
+                return {"jwt_token": response}
+            elif hasattr(self._paradex.account, 'jwt_token'):
+                return {"jwt_token": self._paradex.account.jwt_token}
+            else:
+                logger.info("SDK handles authentication internally")
+                return {"jwt_token": "SDK_MANAGED"}
 
         except Exception as e:
-            # Fallback: try direct API auth
             logger.warning(f"SDK auth failed, trying direct: {e}")
             return await self._direct_auth()
 
     async def _direct_auth(self) -> Dict[str, Any]:
         """Direct API authentication as fallback."""
-        # This would require implementing Starknet signing manually
-        # For now, we rely on paradex-py SDK
         raise AuthenticationError("Direct auth not implemented, paradex-py required")
 
     async def ensure_authenticated(self) -> bool:
@@ -261,10 +332,50 @@ class ParadexClient:
             "Accept": "application/json",
         }
 
-        if self.jwt_token:
+        if self.jwt_token and self.jwt_token != "SDK_MANAGED":
             headers["Authorization"] = f"Bearer {self.jwt_token}"
+        elif self._paradex is not None:
+            # Try to get JWT from SDK's internal state
+            jwt = self._get_sdk_jwt()
+            if jwt:
+                headers["Authorization"] = f"Bearer {jwt}"
 
         return headers
+
+    def _get_sdk_jwt(self) -> Optional[str]:
+        """Try to extract JWT from SDK's internal state."""
+        if self._paradex is None:
+            return None
+
+        try:
+            # Check api_client headers
+            if hasattr(self._paradex, 'api_client'):
+                api_client = self._paradex.api_client
+                if hasattr(api_client, 'headers'):
+                    auth = api_client.headers.get('Authorization', '')
+                    if auth.startswith('Bearer '):
+                        return auth[7:]
+
+            # Check account jwt_token
+            if hasattr(self._paradex, 'account'):
+                account = self._paradex.account
+                for attr in ['jwt_token', '_jwt_token', 'jwt']:
+                    if hasattr(account, attr):
+                        token = getattr(account, attr)
+                        if token:
+                            return token
+
+            # Check paradex jwt_token
+            for attr in ['jwt_token', '_jwt_token', 'jwt']:
+                if hasattr(self._paradex, attr):
+                    token = getattr(self._paradex, attr)
+                    if token:
+                        return token
+
+        except Exception as e:
+            logger.debug(f"Could not extract JWT from SDK: {e}")
+
+        return None
 
     # ==================== HTTP Methods ====================
 
