@@ -188,8 +188,8 @@ paradex_trader/
 
 ```bash
 # 1. 克隆项目
-git clone <repository_url>
-cd paradex_trader
+git clone https://github.com/wuyutanhongyuxin-cell/para_machine.git
+cd para_machine
 
 # 2. 创建虚拟环境 (推荐)
 python -m venv venv
@@ -199,12 +199,17 @@ source venv/bin/activate  # Linux/Mac
 # 3. 安装依赖
 pip install -r requirements.txt
 
-# 4. 复制配置文件
+# 4. 安装包 (重要！)
+pip install -e .
+
+# 5. 复制配置文件
 cp .env.example .env
 
-# 5. 编辑配置
+# 6. 编辑配置
 nano .env  # 或使用任何编辑器
 ```
+
+> **重要**: 必须执行 `pip install -e .` 才能正确导入模块！
 
 ### 配置 .env 文件
 
@@ -264,10 +269,13 @@ LOG_LEVEL=INFO               # 日志级别
 ### 基本用法
 
 ```bash
+# 确保已安装包
+pip install -e .
+
 # 启动交易 (生产模式)
 python -m paradex_trader.main
 
-# 模拟模式 (不执行真实交易)
+# 模拟模式 (不执行真实交易) - 推荐先用这个测试
 python -m paradex_trader.main --dry-run
 
 # 调试模式 (详细日志)
@@ -275,6 +283,9 @@ python -m paradex_trader.main --debug
 
 # 指定配置文件
 python -m paradex_trader.main --config /path/to/.env
+
+# 或者直接运行 main.py (需要先 pip install -e .)
+python main.py --dry-run
 ```
 
 ### 监控运行
