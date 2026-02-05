@@ -118,9 +118,10 @@ class TradingEngine:
         logger.info("Initializing Paradex Trader...")
         logger.info("=" * 60)
 
-        # Database
-        self.db = Database(self.settings.system.data_dir)
-        await self.db.initialize()
+        # Database (synchronous, initializes in __init__)
+        db_path = Path(self.settings.system.data_dir) / "paradex_trader.db"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.db = Database(str(db_path))
         logger.info("Database initialized")
 
         # API Client
@@ -193,7 +194,7 @@ class TradingEngine:
         )
 
         # Load peak from database
-        peak = await self.db.get_system_state("peak_equity")
+        peak = self.db.get_state("peak_equity")
         if peak:
             self.drawdown_controller.peak_equity = float(peak)
 
@@ -511,10 +512,10 @@ class TradingEngine:
                 logger.info(f"Order placed: {order.id}")
                 self._last_trade_time = time.time()
 
-                # Store trade in database
-                await self.db.insert_trade({
+                # Store trade in database (synchronous)
+                self.db.insert_trade({
                     "trade_id": order.id,
-                    "timestamp": time.time(),
+                    "timestamp": datetime.utcnow().isoformat(),
                     "market": market,
                     "side": side.lower(),
                     "size": size,
@@ -526,7 +527,7 @@ class TradingEngine:
                     "signal_strength": signal.strength,
                     "entry_reason": signal.reason,
                     "exit_reason": None,
-                    "features": features,
+                    "entry_features": features,
                 })
 
         except Exception as e:
@@ -613,16 +614,14 @@ class TradingEngine:
             self.online_filter.save_state(str(filter_path))
             logger.info("Online filter state saved")
 
-        # Save peak equity
+        # Save peak equity (synchronous)
         if self.drawdown_controller and self.db:
-            await self.db.save_system_state(
+            self.db.set_state(
                 "peak_equity",
                 str(self.drawdown_controller.peak_equity)
             )
 
-        # Close database
-        if self.db:
-            await self.db.close()
+        # Database doesn't need explicit close (uses context managers)
 
         # Close API client
         if self.client:
