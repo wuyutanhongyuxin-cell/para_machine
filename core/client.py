@@ -113,10 +113,11 @@ class ParadexClient:
 
             env = PROD if self.environment == "prod" else TESTNET
 
+            # paradex-py derives address from private key
+            # Only pass l2_private_key, not l2_address
             self._paradex = Paradex(
                 env=env,
                 l2_private_key=self.l2_private_key,
-                l2_address=self.l2_address,
             )
 
             # Create aiohttp session with connection pooling
