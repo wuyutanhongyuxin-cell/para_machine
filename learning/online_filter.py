@@ -28,10 +28,39 @@ try:
         ensemble,
         optim,
     )
+    # Try to import Rolling - location varies by River version
+    try:
+        from river.utils import Rolling
+        ROLLING_AVAILABLE = True
+    except ImportError:
+        try:
+            Rolling = metrics.Rolling
+            ROLLING_AVAILABLE = True
+        except AttributeError:
+            ROLLING_AVAILABLE = False
     RIVER_AVAILABLE = True
 except ImportError:
     RIVER_AVAILABLE = False
+    ROLLING_AVAILABLE = False
     logger.warning("River not installed. Online learning will be disabled.")
+
+
+class SimpleRollingAccuracy:
+    """Simple rolling accuracy tracker as fallback when River's Rolling is unavailable."""
+
+    def __init__(self, window_size: int = 50):
+        self.window_size = window_size
+        self._results: List[bool] = []
+
+    def update(self, y_true: bool, y_pred: bool) -> None:
+        self._results.append(y_true == y_pred)
+        if len(self._results) > self.window_size:
+            self._results.pop(0)
+
+    def get(self) -> float:
+        if not self._results:
+            return 0.0
+        return sum(self._results) / len(self._results)
 
 
 @dataclass
@@ -138,7 +167,11 @@ class OnlineLearningFilter:
         self.auc = metrics.ROCAUC()
 
         # Rolling metrics (last 50 samples)
-        self.rolling_accuracy = metrics.Rolling(metrics.Accuracy(), window_size=50)
+        # Use River's Rolling if available, otherwise use simple fallback
+        if ROLLING_AVAILABLE:
+            self.rolling_accuracy = Rolling(metrics.Accuracy(), window_size=50)
+        else:
+            self.rolling_accuracy = SimpleRollingAccuracy(window_size=50)
 
     def predict(self, features: Dict[str, float]) -> PredictionResult:
         """
