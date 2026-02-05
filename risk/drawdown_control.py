@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
-from core.exceptions import RiskLimitExceeded
+from paradex_trader.core.exceptions import RiskLimitExceeded
 
 logger = logging.getLogger("paradex_trader.risk.drawdown")
 

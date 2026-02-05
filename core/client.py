@@ -17,14 +17,14 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 
-from core.exceptions import (
+from paradex_trader.core.exceptions import (
     APIError,
     AuthenticationError,
     RateLimitError,
     OrderError,
     InsufficientBalanceError,
 )
-from core.models import (
+from paradex_trader.core.models import (
     BBO,
     Orderbook,
     OrderbookLevel,
@@ -36,7 +36,7 @@ from core.models import (
     OrderStatus,
     AccountInfo,
 )
-from utils.helpers import (
+from paradex_trader.utils.helpers import (
     exponential_backoff,
     format_size,
     safe_float,

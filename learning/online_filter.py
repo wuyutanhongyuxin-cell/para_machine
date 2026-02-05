@@ -26,6 +26,7 @@ try:
         metrics,
         drift,
         ensemble,
+        optim,
     )
     RIVER_AVAILABLE = True
 except ImportError:
@@ -111,7 +112,7 @@ class OnlineLearningFilter:
         self.model = compose.Pipeline(
             preprocessing.StandardScaler(),
             linear_model.LogisticRegression(
-                optimizer=preprocessing.SGD(self.learning_rate),
+                optimizer=optim.SGD(self.learning_rate),
                 l2=self.l2_regularization,
             )
         )
@@ -123,7 +124,7 @@ class OnlineLearningFilter:
         self.secondary_model = compose.Pipeline(
             preprocessing.StandardScaler(),
             linear_model.LogisticRegression(
-                optimizer=preprocessing.SGD(self.learning_rate * 2),
+                optimizer=optim.SGD(self.learning_rate * 2),
                 l2=self.l2_regularization * 0.5,
             )
         )

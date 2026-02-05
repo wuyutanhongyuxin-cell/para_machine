@@ -191,27 +191,29 @@ class TradingEngine:
 
         # Risk Management
         self.position_sizer = PositionSizer(
-            base_risk_pct=self.settings.risk.risk_per_trade,
-            max_position_pct=self.settings.risk.max_position_pct,
+            max_risk_per_trade=self.settings.risk.risk_per_trade,
+            max_size=self.settings.risk.max_position_pct,
             kelly_fraction=self.settings.risk.kelly_fraction,
         )
 
+        # Use initial balance of 10000 for dry-run, or get from account
+        initial_balance = 10000.0  # Default for dry-run mode
         self.drawdown_controller = DrawdownController(
-            level1_threshold=self.settings.risk.drawdown_level1,
-            level2_threshold=self.settings.risk.drawdown_level2,
-            level3_threshold=self.settings.risk.drawdown_level3,
-            daily_loss_limit=self.settings.risk.daily_loss_limit,
+            initial_balance=initial_balance,
+            max_daily_loss_pct=self.settings.risk.daily_loss_limit,
+            max_total_drawdown_pct=self.settings.risk.drawdown_level3,
+            max_loss_per_trade_pct=self.settings.risk.risk_per_trade,
         )
 
         # Load peak from database
         peak = self.db.get_state("peak_equity")
         if peak:
-            self.drawdown_controller.peak_equity = float(peak)
+            self.drawdown_controller.peak_balance = float(peak)
 
         self.cooldown_manager = CooldownManager(
-            consecutive_loss_threshold=self.settings.risk.consecutive_loss_cooldown,
+            max_consecutive_losses=self.settings.risk.consecutive_loss_cooldown,
             large_loss_threshold=self.settings.risk.large_loss_threshold,
-            volatility_cooldown_threshold=self.settings.risk.volatility_cooldown_threshold,
+            volatility_cooldown=int(self.settings.risk.volatility_cooldown_threshold),
         )
 
         # Indicators
@@ -269,6 +271,27 @@ class TradingEngine:
     async def _trading_iteration(self) -> None:
         """Single iteration of the trading loop."""
         market = self.settings.trading.market
+
+        # DRY RUN MODE: Skip API calls and just demonstrate the system is working
+        if self.dry_run:
+            import random
+            # Simulate price around $100,000 for BTC
+            base_price = 100000.0
+            mid_price = base_price + random.uniform(-100, 100)
+
+            logger.info(f"[DRY RUN] Iteration - Simulated mid_price: ${mid_price:,.2f}")
+
+            # Update regime detector with simulated price
+            regime_state = self.regime_detector.update(mid_price)
+            regime_name = regime_state.regime if regime_state else 'unknown'
+
+            # Simulate strategy selection with Thompson Sampling
+            selected_strategy = self.thompson.select_strategy()
+
+            logger.info(f"[DRY RUN] Regime: {regime_name}, Selected Strategy: {selected_strategy}")
+
+            # Skip rest of trading logic in dry run
+            return
 
         # 1. Fetch market data
         bbo = await self.client.get_bbo(market)

@@ -25,7 +25,7 @@ import logging
 import time
 from typing import Any, Dict, Optional
 
-from strategies.base import (
+from paradex_trader.strategies.base import (
     BaseStrategy,
     Direction,
     ExitLevels,

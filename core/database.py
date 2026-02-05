@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional
 
-from core.exceptions import DatabaseError
+from paradex_trader.core.exceptions import DatabaseError
 
 
 class Database:
