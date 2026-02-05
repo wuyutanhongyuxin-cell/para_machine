@@ -129,17 +129,23 @@ class TradingEngine:
         logger.info(f"Database initialized at {db_path}")
 
         # API Client
-        self.client = ParadexClient(
-            l2_private_key=self.settings.api.l2_private_key,
-            l2_address=self.settings.api.l2_address,
-            environment=self.settings.api.environment,
-            timeout=self.settings.api.timeout,
-            max_retries=self.settings.api.max_retries,
-        )
+        if not self.dry_run:
+            self.client = ParadexClient(
+                l2_private_key=self.settings.api.l2_private_key,
+                l2_address=self.settings.api.l2_address,
+                environment=self.settings.api.environment,
+                timeout=self.settings.api.timeout,
+                max_retries=self.settings.api.max_retries,
+            )
 
-        # Verify connection
-        account = await self.client.get_account_info()
-        logger.info(f"Connected to Paradex. Account equity: ${account.equity:,.2f}")
+            # Verify connection
+            account = await self.client.get_account_info()
+            if account:
+                logger.info(f"Connected to Paradex. Account equity: ${account.equity:,.2f}")
+            else:
+                logger.warning("Could not verify account - continuing anyway")
+        else:
+            logger.info("DRY RUN: Skipping API client initialization")
 
         # Initialize strategies
         strategies = create_all_strategies(self.settings)
