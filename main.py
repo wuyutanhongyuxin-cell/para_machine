@@ -119,10 +119,14 @@ class TradingEngine:
         logger.info("=" * 60)
 
         # Database (synchronous, initializes in __init__)
-        db_path = Path(self.settings.system.data_dir) / "paradex_trader.db"
-        db_path.parent.mkdir(parents=True, exist_ok=True)
+        data_dir = Path(self.settings.system.data_dir)
+        # Handle case where 'data' exists as a file instead of directory
+        if data_dir.exists() and not data_dir.is_dir():
+            data_dir = Path("./trader_data")
+        data_dir.mkdir(parents=True, exist_ok=True)
+        db_path = data_dir / "paradex_trader.db"
         self.db = Database(str(db_path))
-        logger.info("Database initialized")
+        logger.info(f"Database initialized at {db_path}")
 
         # API Client
         self.client = ParadexClient(
