@@ -86,7 +86,11 @@ def setup_logger(
         return _loggers[name]
 
     logger = logging.getLogger(name)
-    logger.setLevel(getattr(logging, level.upper()))
+    # Handle both string level names and int level values
+    if isinstance(level, int):
+        logger.setLevel(level)
+    else:
+        logger.setLevel(getattr(logging, level.upper()))
     logger.handlers.clear()  # Remove any existing handlers
 
     # Console format with colors
