@@ -326,3 +326,26 @@ def reload_config() -> TradingConfig:
     """
     get_config.cache_clear()
     return get_config()
+
+
+# Aliases for compatibility with main.py
+Settings = TradingConfig
+
+
+def load_settings(config_path: Optional[str] = None) -> TradingConfig:
+    """
+    Load settings from environment and optional config file.
+
+    Args:
+        config_path: Optional path to .env file.
+
+    Returns:
+        TradingConfig instance.
+    """
+    if config_path:
+        from dotenv import load_dotenv
+        load_dotenv(config_path, override=True)
+        # Clear cache to reload with new env vars
+        get_config.cache_clear()
+
+    return get_config()
